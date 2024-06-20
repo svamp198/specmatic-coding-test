@@ -1,28 +1,35 @@
 package com.store.service
 
+import com.store.exception.ValidationException
+import com.store.helpers.ProductHelper
 import com.store.models.ProductDetails
 import org.springframework.stereotype.Component
-import org.springframework.util.MultiValueMap
 
 @Component
-class ProductService(private var productList : HashMap<Int,ProductDetails> = HashMap()) {
+class ProductService(private var productList : HashMap<Int,ProductDetails> = HashMap(), private val productHelper: ProductHelper,) {
 
-    internal fun addProduct(product: MutableMap<String, Any>): Map<String, Int> {
+    internal fun addProduct(productRequest: Map<String, Any>): Map<String, Int> {
         val id = productList.size + 1
-        product["id"] = id
-        val validProduct = ProductDetails.from(product)
+        val productWithId : MutableMap<String, Any> = productRequest as MutableMap
+        productWithId["id"] = id
+        val validProduct = productHelper.mapToProductDetails(productWithId)
         this.productList[id] = validProduct
         println("Successfully added product `${productList[id].toString()}`")
-        return mapOf("id" to productList.size)
+        return mapOf("id" to id)
     }
 
-    fun getProductsBy(type: String): List<ProductDetails> {
+    fun getProductsBy(type: String?): List<ProductDetails> {
         println("Finding product with type `$type`")
-        return productList.values.filter{product -> product.type == type }
+        return when {
+            type == null -> getProducts()
+            productHelper.isValidType(type) -> productList.values.filter{product -> product.type == type }
+
+            else -> throw ValidationException("Invalid product type `$type`", "/products?type=$type")
+        }
     }
 
-    fun getProducts(): List<ProductDetails> {
-        println("Finding all product ")
+    private fun getProducts(): List<ProductDetails> {
+        println("Finding all products ")
         return productList.values.map{it}
     }
 

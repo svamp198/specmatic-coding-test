@@ -1,7 +1,8 @@
 package com.store.helpers
 
+import com.store.exception.ValidationException
 import com.store.models.ProductDetails
-import com.store.models.ProductType
+import com.store.models.AllowedProductTypes
 import org.springframework.stereotype.Component
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
@@ -10,33 +11,28 @@ import kotlin.reflect.full.memberProperties
 @Component
 class ProductHelper {
 
-    internal fun isValidType(type : String) = ProductType.values().map { it.name }.contains(type)
+    fun isValidType(type: String) = AllowedProductTypes.values().map { it.name }.contains(type.uppercase())
 
-    internal fun isValidRequest(product: MutableMap<String, Any>): Boolean {
-        return if (checkForNonNullValues(product)) checkTypesOfEachValues(product) && isValidType(product["type"] as String)
-        else false
-    }
-
-    private fun checkTypesOfEachValues(product: MutableMap<String, Any>): Boolean {
-        product.forEach { entry ->
-            println("type of `${entry.value}` is `${entry.value::class.simpleName}` should be `${ProductDetails::class.memberProperties.firstOrNull { it.name == entry.key }?.returnType?.simpleTypeName()}`")
-            if (entry.value::class.simpleName != ProductDetails::class.memberProperties.firstOrNull { it.name == entry.key }?.returnType?.simpleTypeName())
-                return false
+    fun mapToProductDetails(productRequestMap: Map<String, Any>): ProductDetails {
+        val productDetailsClass = ProductDetails::class
+        val productDetailsConstructor = productDetailsClass.constructors.first()
+        val params = productDetailsConstructor.parameters.associateWith { property ->
+            productRequestMap[property.name] ?: throw ValidationException("Missing value for ${property.name}")
         }
-        return true
+
+        validateTypeOfEachValueBeforeConversion(productRequestMap)
+
+        return productDetailsConstructor.callBy(params)
     }
 
     private fun KType.simpleTypeName(): String? {
         return (this.classifier as? KClass<*>)?.simpleName
     }
 
-    private fun checkForNonNullValues(product: MutableMap<String, Any>): Boolean {
+    private fun validateTypeOfEachValueBeforeConversion(product: Map<String, Any>) {
         product.forEach { entry ->
-            println("entry key: `${entry.key}` and entry value: `${entry.value}`")
-            if (entry.value == null) {
-                return false
-            }
+            if (entry.value::class.simpleName != ProductDetails::class.memberProperties.firstOrNull { it.name == entry.key }?.returnType?.simpleTypeName())
+                throw ValidationException("for key `${entry.key}`, type of `${entry.value}` is `${entry.value::class.simpleName}`, but should be `${ProductDetails::class.memberProperties.firstOrNull { it.name == entry.key }?.returnType?.simpleTypeName()}`")
         }
-        return true
     }
 }

@@ -1,23 +1,21 @@
 package com.store.models
 
+import javax.validation.constraints.NotNull
+import javax.validation.constraints.Size
+
 data class ProductDetails(
+    @field:NotNull(message = "Id must not be null")
     val id: Int,
+    @field:NotNull(message = "Name must not be null")
+    @field:Size(min = 1, message = "Name must not be empty")
     val name: String,
+    @field:NotNull(message = "Type must not be null")
     val type: String,
+    @field:NotNull(message = "Inventory is mandatory")
     val inventory: Int,
+    @field:NotNull(message = "Cost is mandatory")
     val cost: Int
 ){
-    companion object{
-        fun from(map: Map<String,Any>) = object {
-            val id by map
-            val name by map
-            val type by map
-            val inventory by map
-            val cost by map
-
-            val product = ProductDetails(id as Int, name  as String, type as String, inventory  as Int, cost as Int)
-        }.product
-    }
 
     override fun toString(): String {
         return "ProductDetails(id=$id, name='$name', type='$type', inventory=$inventory, cost=$cost)"
